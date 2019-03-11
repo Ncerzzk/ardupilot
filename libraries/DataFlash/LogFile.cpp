@@ -19,6 +19,7 @@
 #include "DataFlash_Revo.h"
 #include "DataFlash_File_sd.h"
 #include "DFMessageWriter.h"
+#include "../../APMrover2/my_header.h"
 
 extern const AP_HAL::HAL& hal;
 
@@ -391,13 +392,26 @@ void DataFlash_Class::Log_Write_Vibration()
 {
     uint64_t time_us = AP_HAL::micros64();
     const AP_InertialSensor &ins = AP::ins();
-    const Vector3f vibration = ins.get_vibration_levels();
+    //////the log is record the desired x velocity of NED add by shiguang.wu on 2018.10.20 ***start**
+    //const Vector3f vibration = ins.get_vibration_levels();
+    const float variables1=desired_x_dt;
+    const float variables2=desired_y_dt;
+    const float variables3=g_actual_velocity_x;
+    //const float variables4=g_actual_velocity_y;
+    //const float variables5=0.0f;
+    //const float variables6=desired_y_dt;
+    /////////////////////////////**end**
     struct log_Vibe pkt = {
         LOG_PACKET_HEADER_INIT(LOG_VIBE_MSG),
         time_us     : time_us,
+        vibe_x      : variables1,//add by shiguang.wu on 2018.10.20
+        vibe_y      : variables2,//
+        vibe_z      : variables3,//
+        /*
         vibe_x      : vibration.x,
         vibe_y      : vibration.y,
         vibe_z      : vibration.z,
+        */
         clipping_0  : ins.get_accel_clip_count(0),
         clipping_1  : ins.get_accel_clip_count(1),
         clipping_2  : ins.get_accel_clip_count(2)

@@ -28,12 +28,14 @@ public:
     // using in centi-degrees. This is used to display an arrow on
     // ground stations showing the effect of the cross-tracking in the
     // controller
+    //方位角度
     virtual int32_t nav_bearing_cd(void) const = 0;
 
     // return the difference between the vehicles current course and
     // the nav_bearing_cd() in centi-degrees. A positive value means
     // the vehicle is tracking too far to the left of the correct
     // bearing.
+    //方位误差
     virtual int32_t bearing_error_cd(void) const = 0;
 
     // return the target bearing in centi-degrees. This is the bearing

@@ -248,7 +248,12 @@ void NavEKF2_core::SelectVelPosFusion()
     if (gpsDataToFuse && PV_AidingMode == AID_ABSOLUTE) {
         // set fusion request flags
         if (frontend->_fusionModeGPS <= 1) {
-            fuseVelData = true;
+            //fuseVelData = true;
+
+
+
+        	//// write by wu 2018.9.29////
+            fuseVelData = false;
         } else {
             fuseVelData = false;
         }

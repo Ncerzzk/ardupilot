@@ -4,7 +4,8 @@
 
 #include <GCS_MAVLink/GCS_MAVLink.h>
 #include <AP_Math/AP_Math.h>
-
+#include <AP_Common/location.h>
+//#include <AC_WPNav/AC_WPNav.h>
 #include "defines.h"
 
 #define MODE_NEXT_HEADING_UNKNOWN   99999.0f    // used to indicate to set_desired_location method that next leg's heading is unknown
@@ -180,12 +181,17 @@ protected:
     class RC_Channel *&channel_throttle;
     class RC_Channel *&channel_lateral;
     class AP_Mission &mission;
+    class AC_AttitudeControl *&r_attitude_control;
     class AR_AttitudeControl &attitude_control;
 
+    class AC_WPNav *&r_wp_nav;
 
     // private members for waypoint navigation
     Location _origin;           // origin Location (vehicle will travel from the origin to the destination)
     Location _destination;      // destination Location when in Guided_WP
+    Location initial_position;      // initial Location when in Guided_WP write by shiguang.wu on 2018.10.23
+    Location original_position;      // initial Location when in Guided_WP write by shiguang.wu on 2018.10.23
+
     float _distance_to_destination; // distance from vehicle to final destination in meters
     bool _reached_destination;  // true once the vehicle has reached the destination
     float _desired_yaw_cd;      // desired yaw in centi-degrees
@@ -193,6 +199,7 @@ protected:
     float _desired_speed;       // desired speed in m/s
     float _desired_speed_final; // desired speed in m/s when we reach the destination
     float _speed_error;         // ground speed error in m/s
+    float _yaw_angle_start;
     uint32_t last_steer_to_wp_ms;   // system time of last call to calc_steering_to_waypoint
 };
 
@@ -236,6 +243,9 @@ public:
     // return distance (in meters) to destination
     float get_distance_to_destination() const override;
 
+
+    // new functions set desired location for rover
+    void r_set_desired_location(const Location_Class& dest_class,const struct Location& destination, float next_leg_bearing_cd);
     // set desired location, heading and speed
     void set_desired_location(const struct Location& destination, float next_leg_bearing_cd = MODE_NEXT_HEADING_UNKNOWN);
     bool reached_destination() override;

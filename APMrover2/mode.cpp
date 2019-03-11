@@ -9,7 +9,10 @@ Mode::Mode() :
     channel_throttle(rover.channel_throttle),
     channel_lateral(rover.channel_lateral),
     mission(rover.mission),
-    attitude_control(rover.g2.attitude_control)
+    attitude_control(rover.g2.attitude_control),
+    r_wp_nav(rover.r_wp_nav),
+    r_attitude_control(rover.r_attitude_control)
+
 { }
 
 void Mode::exit()
@@ -33,15 +36,25 @@ bool Mode::enter()
                                 (filt_status.flags.horiz_pos_abs || filt_status.flags.pred_horiz_pos_abs ||
                                  filt_status.flags.horiz_pos_rel || filt_status.flags.pred_horiz_pos_rel);
         if (requires_position() && !position_ok) {
+            gcs().send_text(MAV_SEVERITY_WARNING, "position failed");
             return false;
         }
 
         // check velocity estimate (if we have position estimate, we must have velocity estimate)
         if (requires_velocity() && !position_ok && !filt_status.flags.horiz_vel) {
+        	if(!filt_status.flags.horiz_vel){
+        		gcs().send_text(MAV_SEVERITY_WARNING, "horize_vel velocity failed");
+        	}
+            gcs().send_text(MAV_SEVERITY_WARNING, "velocity failed");
+
             return false;
         }
     }
-
+    original_position.lat=399789466;
+    original_position.lng=1163261748;
+    original_position.alt=100;
+    Vector2f pos_init=location_diff(original_position,rover.current_loc);
+    attitude_control.set_pos_init(pos_init);
     return _enter();
 }
 
@@ -106,7 +119,7 @@ void Mode::get_pilot_desired_steering_and_throttle(float &steering_out, float &t
          (g.pilot_steer_type == PILOT_STEER_TYPE_DIR_REVERSED_WHEN_REVERSING))) {
         steering_out *= -1;
     }
-    throttle_out = throttle_out_limited;
+    //throttle_out = throttle_out_limited;
 }
 
 // decode pilot steering and return steering_out and speed_out (in m/s)
@@ -136,6 +149,9 @@ void Mode::get_pilot_desired_lateral(float &lateral_out)
 
     // get pilot lateral input
     lateral_out = rover.channel_lateral->get_control_in();
+    //float throttle_out_limited = g2.motors.get_slew_limited_throttle(lateral_out, rover.G_Dt);
+   // lateral_out=throttle_out_limited;
+
 }
 
 // set desired location
@@ -149,6 +165,8 @@ void Mode::set_desired_location(const struct Location& destination, float next_l
         calc_stopping_location(_origin);
     }
     _destination = destination;
+    //
+    //r_wp_nav->set_wp_destination(destination);
 
     // initialise distance
     _distance_to_destination = get_distance(_origin, _destination);
@@ -401,6 +419,7 @@ void Mode::calc_steering_to_waypoint(const struct Location &origin, const struct
         calc_steering_to_heading(desired_heading, g2.pivot_turn_rate);
     } else {
         // call lateral acceleration to steering controller
+        //侧向加速度使之移动
         calc_steering_from_lateral_acceleration(desired_lat_accel, reversed);
     }
 }

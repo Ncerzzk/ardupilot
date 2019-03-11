@@ -350,6 +350,18 @@ public:
 
     // follow mode library
     AP_Follow follow;
+    AP_Int8 para1;
+    AP_Float para2;
+    AP_Float para3;
+    AP_Float para5;
+    AP_Float uwbxyz;
+    AP_Float angle_error_uwbtoglo;
+    AP_Float v_control;
+
+
+    //AP_Float desired_T;
+    //AP_Float desired_v_max;
+
 };
 
 extern const AP_Param::Info var_info[];

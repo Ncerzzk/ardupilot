@@ -210,7 +210,10 @@ const AP_Param::GroupInfo AR_AttitudeControl::var_info[] = {
     // @Units: Hz
     // @User: Standard
     AP_SUBGROUPINFO(_pitch_to_throttle_pid, "_BAL_", 10, AR_AttitudeControl, AC_PID),
-    
+    AP_GROUPINFO("VX_D", 11, AR_AttitudeControl, _desired_vx, 0.50f),
+    AP_GROUPINFO("VY_D", 12, AR_AttitudeControl, _desired_vy, 0.50f),
+    AP_GROUPINFO("YAW_D", 13, AR_AttitudeControl, _yaw_max, 1000.0f),
+
     AP_GROUPEND
 };
 
@@ -224,6 +227,172 @@ AR_AttitudeControl::AR_AttitudeControl(AP_AHRS &ahrs) :
     AP_Param::setup_object_defaults(this, var_info);
 }
 
+// new function for PID control for position control  write by shiguang.wu 2018.10.23*****start
+Vector2f AR_AttitudeControl::update_x_control(Vector2f actual_position)
+{
+    const uint32_t now = AP_HAL::millis();
+    if(_pos_control_last_ms==0||((now - _pos_control_last_ms)*0.001f >1)){
+    	_pos_control_last_ms=now;
+    	_pos_target.x=actual_position.y; //if time out the range of control,then actual equals target.
+    	_pos_target.y=actual_position.x;//if time out the range of control,then actual equals target.
+    }
+    float dt=(now-_pos_control_last_ms)*0.001f;
+    _pos_target.x+=_vel_desired.x*dt;
+    _pos_target.y+=_vel_desired.y*dt;
+    g_desired_pos_x_log=_pos_target.x;//record for log
+    g_actual_pos_x_log=actual_position.y;//record for log
+    g_desired_pos_y_log=_pos_target.y;//record for log
+    g_actual_pos_y_log=actual_position.x;//record for log
+    _pos_control_last_ms=now;
+    Vector2f vel_output;
+    float pos_x_control_out=update_pos_x_control(_pos_target.x,actual_position.y,0.02f);
+    float pos_y_control_out=update_pos_y_control(_pos_target.y,actual_position.x,0.02f);
+    //if(abs(pos_x_control_out))
+    g_pi_desired_x= _pos_target.x;//record for mp
+    g_pi_desired_y= _pos_target.y;//record for mp
+    guide_goal_pos_x=actual_position.y;//record for mp
+    guide_goal_pos_y=actual_position.x;//record for mp
+    //output the actual action=error velocity +desired velocity.
+    vel_output.x=(pos_x_control_out+_vel_desired.x);
+    vel_output.y=(pos_y_control_out+_vel_desired.y);
+	return vel_output;
+}
+void AR_AttitudeControl::set_pos_init(Vector2f pos_init)
+{
+	_pos_target.x=pos_init.y;
+	_pos_target.y=pos_init.x;
+	_vel_desired.x=0.0f;
+	_vel_desired.y=0.0f;
+	_pos_control_last_ms=0;
+	_speed_last_ms=0;
+	_balance_last_ms=0;
+}
+void AR_AttitudeControl::set_desired_vel(float desired_vel_x,float desired_vel_y)
+{
+	_vel_desired.x=desired_vel_x;
+	_vel_desired.y=desired_vel_y;
+}
+float AR_AttitudeControl::update_pos_x_control(float desired_position_x,float actual_position_x,float dt)
+{
+	// sanity check dt
+	        dt = constrain_float(dt, 0.0f, 1.0f);
+	        // if not called recently, reset input filter and desired turn rate to actual turn rate (used for accel limiting)
+	        const uint32_t now = AP_HAL::millis();
+	        //float update_dt;
+	        if ((_balance_last_ms == 0) || ((now - _balance_last_ms) > AR_ATTCONTROL_TIMEOUT_MS)) {
+	        	_pitch_to_throttle_pid.reset_filter();
+	        	_pitch_to_throttle_pid.reset_I();
+	        	//update_dt=0;
+	        	desired_position_x=actual_position_x;
+                //gcs().send_text(MAV_SEVERITY_WARNING, "pos x control time out!");
+	        }else{
+	       // update_dt=(now - _balance_last_ms)*0.001f;
+	        	}
+
+	        _balance_last_ms = now;
+	        // set PID's dt
+	        _pitch_to_throttle_pid.set_dt(dt);
+	        const float rate_error = (desired_position_x - actual_position_x);
+	        //g_pi_desired_x=rate_error;
+
+		    // record velocity_x_g for logging purposes only
+	        _pitch_to_throttle_pid.set_desired_rate(desired_position_x);
+	        // pass error to PID controller
+	        _pitch_to_throttle_pid.set_input_filter_all(rate_error);
+	        // get feed-forward
+	        const float ff = _pitch_to_throttle_pid.get_ff(desired_position_x);
+	        // get p
+	        const float p = _pitch_to_throttle_pid.get_p();
+	        float i = _pitch_to_throttle_pid.get_integrator();
+	        i = _pitch_to_throttle_pid.get_i();
+	        // get d
+	        const float d = _pitch_to_throttle_pid.get_d();
+	        // constrain and return final output
+	        return ( p + i + d);
+}
+
+float AR_AttitudeControl::update_pos_y_control(float desired_position_y,float actual_position_y,float dt)
+{
+	   // sanity check dt
+	    dt = constrain_float(dt, 0.0f, 1.0f);
+        //float update_dt;
+	    // if not called recently, reset input filter.
+	    const uint32_t now = AP_HAL::millis();
+	    if (!speed_control_active()) {
+	        _throttle_speed_pid.reset_filter();
+	        desired_position_y = actual_position_y;
+	       // update_dt=0;
+            //().send_text(MAV_SEVERITY_WARNING, "pos y control time out!");
+
+	    }else{//update_dt=(now - _speed_last_ms)*0.001f;
+	    }
+	    _speed_last_ms = now;
+	    // set PID's dt
+	    _throttle_speed_pid.set_dt(dt);
+	    // calculate speed error and pass to PID controller
+	    const float speed_error = desired_position_y - actual_position_y;
+        //g_pi_desired_y=speed_error;
+	    _throttle_speed_pid.set_input_filter_all(speed_error);
+	    // record velocity_y_g for logging purposes only
+	    _throttle_speed_pid.set_desired_rate(desired_position_y);
+	    // get feed-forward
+	    const float ff = _throttle_speed_pid.get_ff(desired_position_y);
+	    // get p
+	    const float p = _throttle_speed_pid.get_p();
+	    float i = _throttle_speed_pid.get_integrator();
+	    i = _throttle_speed_pid.get_i();
+	    // get d
+	    const float d = _throttle_speed_pid.get_d();
+	    return (p+i+d);
+	}
+
+// new function for PID control for position control  write by wu 2018.9.27//
+float AR_AttitudeControl::get_throttle_out(Vector2f pos_error, float dt)
+{
+    // sanity check dt
+        dt = constrain_float(dt, 0.0f, 1.0f);
+
+        // if not called recently, reset input filter and desired speed to actual speed (used for accel limiting)
+        const uint32_t now = AP_HAL::millis();
+        if (!speed_control_active()) {
+            _throttle_speed_pid.reset_filter();
+            //_desired_speed = speed;
+        }
+        _speed_last_ms = now;
+       // float current_loc;
+        // set PID's dt
+        _throttle_speed_pid.set_dt(dt);
+
+        // calculate speed error and pass to PID controller
+        //const float pos_error = pos.y - current_loc;
+        _throttle_speed_pid.set_input_filter_all(pos_error.x);
+
+        // record desired speed for logging purposes only
+        //_throttle_speed_pid.set_desired_rate(pos_error);
+
+        // get feed-forward
+        const float ff = _throttle_speed_pid.get_ff(pos_error.x);
+
+        // get p
+        const float p = _throttle_speed_pid.get_p();
+
+        // get i unless moving at low speed or motors have hit a limit
+        float i = _throttle_speed_pid.get_integrator();
+        if ((is_negative(pos_error.x))) {
+            //i = _throttle_speed_pid.get_i();
+        }
+
+        // get d
+        const float d = _throttle_speed_pid.get_d();
+
+        // calculate final output
+        float throttle_out = (ff+p+i+d);
+
+        // final output throttle in range -1 to 1
+        return throttle_out;
+
+}
+//*********end
 // return a steering servo output from -1.0 to +1.0 given a desired lateral acceleration rate in m/s/s.
 // positive lateral acceleration is to the right.
 float AR_AttitudeControl::get_steering_out_lat_accel(float desired_accel, bool motor_limit_left, bool motor_limit_right, float dt)
@@ -270,6 +439,227 @@ float AR_AttitudeControl::get_steering_out_heading(float heading_rad, float rate
 
     return get_steering_out_rate(desired_rate, motor_limit_left, motor_limit_right, dt);
 }
+
+
+// new function for PID control for position control  write by wu 2018.9.27//
+float AR_AttitudeControl::get_lateral_out(Vector2f pos_error,float dt)
+{
+    // sanity check dt
+        dt = constrain_float(dt, 0.0f, 1.0f);
+
+        // if not called recently, reset input filter and desired turn rate to actual turn rate (used for accel limiting)
+        const uint32_t now = AP_HAL::millis();
+        if ((_steer_turn_last_ms == 0) || ((now - _steer_turn_last_ms) > AR_ATTCONTROL_TIMEOUT_MS)) {
+            _steer_rate_pid.reset_filter();
+            _steer_rate_pid.reset_I();
+           // _desired_turn_rate = _ahrs.get_yaw_rate_earth();
+        }
+        _steer_turn_last_ms = now;
+
+        //const float rate_error = (_desired_turn_rate - _ahrs.get_yaw_rate_earth());
+
+        // set PID's dt
+        _steer_rate_pid.set_dt(dt);
+
+        // record desired rate for logging purposes only
+        //_steer_rate_pid.set_desired_rate();
+
+        // pass error to PID controller
+        _steer_rate_pid.set_input_filter_all(pos_error.y);
+
+        // get feed-forward
+        const float ff = _steer_rate_pid.get_ff(pos_error.y);
+
+        // get p
+        const float p = _steer_rate_pid.get_p();
+
+        // get i unless non-skid-steering rover at low speed or steering output has hit a limit
+        float i = _steer_rate_pid.get_integrator();
+        //i = _steer_rate_pid.get_i();
+        if((is_negative(pos_error.y)))
+        {
+           // i = _steer_rate_pid.get_i();
+
+        }
+        // get d
+        const float d = _steer_rate_pid.get_d();
+
+        // constrain and return final output
+        return (ff + p + i + d);
+}
+
+// new function for PID control for x velocity in the global coordinate system  write by wu 2018.10.9//
+//velocity_x_g in (m/s)
+float AR_AttitudeControl::get_velocity_x_g_temp(float velocity_x_g, float dt)
+{
+	// sanity check dt
+	        dt = constrain_float(dt, 0.0f, 1.0f);
+	        Vector2f velocity_g;
+
+	        //to get the actual velocity in the global coordinate system,
+	        if (!get_global_speed(velocity_g)) {
+	            return 0.0f;
+	        }
+	        // if not called recently, reset input filter and desired turn rate to actual turn rate (used for accel limiting)
+	        const uint32_t now = AP_HAL::millis();
+	        float update_dt;
+	        if ((_balance_last_ms == 0) || ((now - _balance_last_ms) > AR_ATTCONTROL_TIMEOUT_MS)) {
+	        	_pitch_to_throttle_pid.reset_filter();
+	        	_pitch_to_throttle_pid.reset_I();
+	        	update_dt=0;
+	           // _desired_turn_rate = _ahrs.get_yaw_rate_earth();
+	        }
+	        if(_balance_last_ms==0){}else{
+	        update_dt=(now - _balance_last_ms)*0.001f;
+	        update_dt_display=update_dt;
+	        }
+	        _balance_last_ms = now;
+	        // set PID's dt
+	        _pitch_to_throttle_pid.set_dt(dt);
+	        float actual_velocity_x=velocity_g.x;
+	        const float rate_error = (velocity_x_g - actual_velocity_x);
+	        //used for display on mp.
+		    distance_wp_x=rate_error;
+		    display1=velocity_g.x;
+		    display2=velocity_g.y;
+		    // record velocity_x_g for logging purposes only
+	        _pitch_to_throttle_pid.set_desired_rate(velocity_x_g);
+
+	        // pass error to PID controller
+	        _pitch_to_throttle_pid.set_input_filter_all(rate_error);
+
+	        // get feed-forward
+	        const float ff = _pitch_to_throttle_pid.get_ff(velocity_x_g);
+
+	        // get p
+	        const float p = _pitch_to_throttle_pid.get_p();
+
+	        float i = _pitch_to_throttle_pid.get_integrator();
+	        i = _pitch_to_throttle_pid.get_i();
+	        // get d
+	        const float d = _pitch_to_throttle_pid.get_d();
+
+	        // constrain and return final output
+	        return (ff + p + i + d);
+
+}
+float AR_AttitudeControl::get_velocity_x_g(float velocity_x_g, float dt)
+{
+	// sanity check dt
+	        dt = constrain_float(dt, 0.0f, 1.0f);
+	        Vector2f velocity_g;
+
+	        if (!get_global_speed(velocity_g)) {
+	            // we expect caller will not try to control heading using rate control without a valid speed estimate
+	            // on failure to get speed we do not attempt to steer
+	            return 0.0f;
+	        }
+	        // if not called recently, reset input filter and desired turn rate to actual turn rate (used for accel limiting)
+	        const uint32_t now = AP_HAL::millis();
+	        if ((_steer_turn_last_ms == 0) || ((now - _steer_turn_last_ms) > AR_ATTCONTROL_TIMEOUT_MS)) {
+	            _steer_rate_pid.reset_filter();
+	            _steer_rate_pid.reset_I();
+	           // _desired_turn_rate = _ahrs.get_yaw_rate_earth();
+	        }
+	        _steer_turn_last_ms = now;
+
+
+
+	        // set PID's dt
+	        _steer_rate_pid.set_dt(dt);
+	        float actual_velocity_x=velocity_g.x;
+	        const float rate_error = (velocity_x_g - actual_velocity_x);
+	        // record desired rate for logging purposes only
+	        _steer_rate_pid.set_desired_rate(velocity_x_g);
+
+	        // pass error to PID controller
+	        _steer_rate_pid.set_input_filter_all(rate_error);
+
+	        // get feed-forward
+	        const float ff = _steer_rate_pid.get_ff(velocity_x_g);
+
+	        // get p
+	        const float p = _steer_rate_pid.get_p();
+
+	        // get i unless non-skid-steering rover at low speed or steering output has hit a limit
+	        float i = _steer_rate_pid.get_integrator();
+	        //i = _steer_rate_pid.get_i();
+	        // get d
+	        const float d = _steer_rate_pid.get_d();
+
+	        // constrain and return final output
+	        return (ff + p + i + d);
+
+
+}
+//this function is used for control the angle with P,the aim is to get the desired rotate rate.write by shiguang.wu on 2018.10.22
+// desired yaw in radians/sec.
+float AR_AttitudeControl::get_yaw(float desired_yaw, float dt)
+{
+
+	const float yaw_error=-wrap_PI((desired_yaw -_ahrs.yaw));//to get the exact the angle error.
+    float desired_rate = _steer_angle_p.get_p(yaw_error);
+    return desired_rate;
+}
+
+//this function is used for control the angle with PI,the aim is to get the actual control.write by shiguang.wu on 2018.10.22
+// desired yaw in radians/sec. we define the clockwise is positive
+float AR_AttitudeControl::get_yaw_rate(float desired_rate, float dt)
+{
+    // sanity check dt
+    dt = constrain_float(dt, 0.0f, 1.0f);
+
+    // if not called recently, reset input filter.
+    const uint32_t now = AP_HAL::millis();
+    if ((_steer_turn_last_ms == 0) || ((now - _steer_turn_last_ms) > AR_ATTCONTROL_TIMEOUT_MS)) {
+        _steer_rate_pid.reset_filter();
+        _steer_rate_pid.reset_I();
+        _desired_turn_rate = _ahrs.get_yaw_rate_earth();
+    }
+    _steer_turn_last_ms = now;
+
+    _desired_turn_rate = desired_rate;
+
+    // rate limit desired  rate
+    if (is_positive(_steer_rate_max)) {
+        const float steer_rate_max_rad = radians(_steer_rate_max);
+        _desired_turn_rate = constrain_float(_desired_turn_rate, -steer_rate_max_rad, steer_rate_max_rad);
+    }
+
+    // Calculate the rotate rate error (rad/sec)
+    const float rate_error = (_desired_turn_rate - _ahrs.get_yaw_rate_earth());//_ahrs.get_yaw_rate_earth() positive is anticlockwise.
+    //used for display on mp.
+    if(_yaw_max==1){
+    distance_wp_x=rate_error;
+    display1=_ahrs.get_yaw_rate_earth();}
+
+    // set PID's dt
+    _steer_rate_pid.set_dt(dt);
+
+    // record desired rate for logging purposes only
+    _steer_rate_pid.set_desired_rate(_desired_turn_rate);
+
+    // pass error to PID controller
+    _steer_rate_pid.set_input_filter_all(rate_error);
+
+    // get feed-forward
+    const float ff = _steer_rate_pid.get_ff(_desired_turn_rate);
+
+    // get p
+    const float p = _steer_rate_pid.get_p();
+
+    float i = _steer_rate_pid.get_integrator();
+        i = _steer_rate_pid.get_i();
+
+    // get d
+    const float d = _steer_rate_pid.get_d();
+
+    // constrain and return final output
+    float out=ff + p + i + d;
+
+    return out;
+}
+
 
 // return a steering servo output from -1 to +1 given a
 // desired yaw rate in radians/sec. Positive yaw is to the right.
@@ -362,6 +752,59 @@ bool AR_AttitudeControl::get_lat_accel(float &lat_accel) const
     lat_accel = speed * _ahrs.get_yaw_rate_earth();
     return true;
 }
+
+
+
+
+// new function for PID control for y velocity in the global coordinate system  write by wu 2018.10.9//
+//velocity_x_g in (m/s)
+float AR_AttitudeControl::get_velocity_y_g(float velocity_y_g, float dt)
+{
+    // sanity check dt
+    dt = constrain_float(dt, 0.0f, 1.0f);
+    Vector2f velocity_g;
+
+    if (!get_global_speed(velocity_g)) {
+        return 0.0f;
+    }
+    float actual_velocity=velocity_g.y;
+    // if not called recently, reset input filter.
+    const uint32_t now = AP_HAL::millis();
+    if (!speed_control_active()) {
+        _throttle_speed_pid.reset_filter();
+        _desired_speed = actual_velocity;
+    }
+    _speed_last_ms = now;
+
+    // set PID's dt
+    _throttle_speed_pid.set_dt(dt);
+
+    // calculate speed error and pass to PID controller
+    const float speed_error = velocity_y_g - actual_velocity;
+    distance_wp_x=speed_error;
+    display1=velocity_g.x;
+    display2=velocity_g.y;
+    _throttle_speed_pid.set_input_filter_all(speed_error);
+
+    // record velocity_y_g for logging purposes only
+    _throttle_speed_pid.set_desired_rate(velocity_y_g);
+
+    // get feed-forward
+    const float ff = _throttle_speed_pid.get_ff(velocity_y_g);
+
+    // get p
+    const float p = _throttle_speed_pid.get_p();
+
+
+    float i = _throttle_speed_pid.get_integrator();
+    i = _throttle_speed_pid.get_i();
+
+    // get d
+    const float d = _throttle_speed_pid.get_d();
+    return (ff+p+i+d);
+}
+
+
 
 // return a throttle output from -1 to +1 given a desired speed in m/s (use negative speeds to travel backwards)
 //   motor_limit should be true if motors have hit their upper or lower limits
@@ -542,6 +985,21 @@ bool AR_AttitudeControl::get_forward_speed(float &speed) const
     // calculate forward speed velocity into body frame
     speed = velocity.x*_ahrs.cos_yaw() + velocity.y*_ahrs.sin_yaw();
     return true;
+}
+
+// get forward speed in m/s (earth-frame horizontal velocity but only along vehicle x-axis).  returns true on success
+bool AR_AttitudeControl::get_global_speed(Vector2f &speed) const
+{
+    Vector3f velocity;
+	if (!_ahrs.get_velocity_NED(velocity)) {
+		return false;}
+		else
+		{
+		    speed.x = velocity.y;
+		    speed.y=velocity.x;
+		    return true;
+		}
+
 }
 
 float AR_AttitudeControl::get_decel_max() const

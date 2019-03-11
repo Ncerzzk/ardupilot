@@ -73,6 +73,7 @@ HASHADDER_FLAGS += --nuttx "$(NUTTX_SRC)/.."
 endif
 HASHADDER_FLAGS += --uavcan "$(UAVCAN_DIR)"
 
+#定义了make的具体指令
 .PHONY: module_mk
 module_mk:
 	$(v) echo "Building $(SKETCHBOOK)/module.mk"
@@ -94,7 +95,7 @@ px4-v1: $(BUILDROOT)/make.flags CHECK_MODULES $(MAVLINK_HEADERS) $(UAVCAN_HEADER
 	$(v) cp $(PX4_ROOT)/Images/px4fmu-v1_APM.px4 $(SKETCH)-v1.px4
 	$(v) $(SKETCHBOOK)/Tools/scripts/add_git_hashes.py $(HASHADDER_FLAGS) "$(SKETCH)-v1.px4" "$(SKETCH)-v1.px4"
 	$(v) echo "PX4 $(SKETCH) Firmware is in $(SKETCH)-v1.px4"
-
+#编译的时候make px4-v2  解释-v2的指令
 px4-v2: $(BUILDROOT)/make.flags CHECK_MODULES $(MAVLINK_HEADERS) $(UAVCAN_HEADERS) $(PX4_ROOT)/Archives/px4fmu-v2.export $(SKETCHCPP) module_mk px4-io-v2
 	$(v) echo Building px4-v2
 	$(RULEHDR)
@@ -104,6 +105,7 @@ px4-v2: $(BUILDROOT)/make.flags CHECK_MODULES $(MAVLINK_HEADERS) $(UAVCAN_HEADER
 	$(v) cp $(PX4_ROOT)/Images/px4fmu-v2_APM.px4 $(SKETCH)-v2.px4
 	$(v) $(SKETCHBOOK)/Tools/scripts/add_git_hashes.py $(HASHADDER_FLAGS) "$(SKETCH)-v2.px4" "$(SKETCH)-v2.px4"
 	$(v) echo "PX4 $(SKETCH) Firmware is in $(SKETCH)-v2.px4"
+#可打印相关的变量值，利用echo
 
 px4-v3: $(BUILDROOT)/make.flags CHECK_MODULES $(MAVLINK_HEADERS) $(UAVCAN_HEADERS) $(PX4_ROOT)/Archives/px4fmu-v3.export $(SKETCHCPP) module_mk px4-io-v2
 	$(v) echo Building px4-v3

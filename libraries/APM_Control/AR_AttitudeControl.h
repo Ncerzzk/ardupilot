@@ -4,7 +4,10 @@
 #include <AP_Common/AP_Common.h>
 #include <AC_PID/AC_PID.h>
 #include <AC_PID/AC_P.h>
+#include <AP_Math/AP_Math.h>//new add write by shiguang.wu on 2018.10.23
+#include <AP_Math/location.h>//new add write by shiguang.wu on 2018.10.23
 
+#include "../../APMrover2/my_header.h"
 // attitude control default definition
 #define AR_ATTCONTROL_STEER_ANG_P       2.50f
 #define AR_ATTCONTROL_STEER_RATE_FF     0.20f
@@ -57,6 +60,21 @@ public:
     // return value is normally in range -1.0 to +1.0 but can be higher or lower
     float get_steering_out_heading(float heading_rad, float rate_max, bool motor_limit_left, bool motor_limit_right, float dt);
 
+    // new function for PID control for position control  write by shiguang.wu 2018.10.23*****start
+    Vector2f update_x_control(Vector2f actual_position);
+    void set_pos_init(Vector2f pos_init);
+    void set_desired_vel(float desired_vel_x,float desired_vel_y);
+    float update_pos_x_control(float desired_position_x,float actual_position_x,float dt);
+    float update_pos_y_control(float desired_position_y,float actual_position_y,float dt);
+
+    // new function for PID control for position control  write by wu 2018.9.27//
+     float get_throttle_out(Vector2f pos_error, float dt);
+    //*********end
+
+    // new function for PID control for position control  write by wu 2018.9.27//
+    float get_lateral_out(Vector2f pos_error,float dt);
+
+
     // return a steering servo output given a desired yaw rate in radians/sec.
     // positive yaw is to the right
     // return value is normally in range -1.0 to +1.0 but can be higher or lower
@@ -80,6 +98,13 @@ public:
     //   forward/back deceleartion max in m/s/s
     void set_throttle_limits(float throttle_accel_max, float throttle_decel_max);
 
+
+
+
+
+
+
+
     // return a throttle output from -1 to +1 given a desired speed in m/s (use negative speeds to travel backwards)
     //   desired_speed argument should already have been passed through get_desired_speed_accel_limited function
     //   motor_limit should be true if motors have hit their upper or lower limits
@@ -102,6 +127,25 @@ public:
 
     // get forward speed in m/s (earth-frame horizontal velocity but only along vehicle x-axis).  returns true on success
     bool get_forward_speed(float &speed) const;
+
+    ///////////////////////////////////////////////
+    //new object for rover by wu in2018/10/9 start
+    bool get_global_speed(Vector2f &speed) const;
+    // new function for PID control velocity control  write by wu 2018.10.9//
+    float get_velocity_y_g(float velocity_y_g, float dt);
+    float get_velocity_x_g(float velocity_x_g, float dt);
+    float get_velocity_x_g_temp(float velocity_x_g, float dt);
+    float get_yaw_rate(float desired_rate, float dt);
+    float get_yaw(float desired_yaw, float dt);
+    ////////////////////////////////////////////
+
+///////////new functions write by wy 2018.10.10//////////
+    float get_desired_vx()const{return _desired_vx;}
+    float get_desired_vy()const{return _desired_vy;}
+    float get_yaw_max()const{return _yaw_max;}
+
+    ///////////////////
+
 
     // get throttle/speed controller maximum acceleration (also used for deceleration)
     float get_accel_max() const { return MAX(_throttle_accel_max, 0.0f); }
@@ -135,12 +179,35 @@ private:
     AC_PID   _throttle_speed_pid;   // throttle speed controller
     AC_PID   _pitch_to_throttle_pid;// balancebot pitch controller
 
+    //new object for rover by wu in2018/9/17 start
+    //AC_PID   _globalpos_x_pid;
+    //AC_PID   _globalpos_y_pid;
+    //end
+
+
     AP_Float _throttle_accel_max;   // speed/throttle control acceleration (and deceleration) maximum in m/s/s.  0 to disable limits
     AP_Float _throttle_decel_max;    // speed/throttle control deceleration maximum in m/s/s. 0 to use ATC_ACCEL_MAX for deceleration
     AP_Int8  _brake_enable;         // speed control brake enable/disable. if set to 1 a reversed output to the motors to slow the vehicle.
     AP_Float _stop_speed;           // speed control stop speed.  Motor outputs to zero once vehicle speed falls below this value
     AP_Float _steer_accel_max;      // steering angle acceleration max in deg/s/s
     AP_Float _steer_rate_max;       // steering rate control maximum rate in deg/s
+    ///new functions write by 2018.10.10/////
+    AP_Float _desired_vx;
+    AP_Float _desired_vy;
+    AP_Float _yaw_max;
+    //////////////////
+
+    // position control write bu shiguang.wu on 2018.10.23
+    uint32_t _pos_control_last_ms;
+    Vector2f _pos_target;
+    Vector2f _pos_error;
+    Vector2f _vel_desired;
+    Vector2f _vel_target;
+    Vector2f _last_pos;
+
+
+
+    //
 
     // steering control
     uint32_t _steer_lat_accel_last_ms;  // system time of last call to lateral acceleration controller (i.e. get_steering_out_lat_accel)

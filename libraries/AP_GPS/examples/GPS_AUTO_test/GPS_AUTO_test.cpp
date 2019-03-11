@@ -29,6 +29,7 @@
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_RangeFinder/AP_RangeFinder.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
+#include <AP_BattMonitor.h>
 
 void setup();
 void loop();

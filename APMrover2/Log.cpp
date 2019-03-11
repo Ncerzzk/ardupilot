@@ -127,11 +127,11 @@ void Rover::Log_Write_Nav_Tuning()
     struct log_Nav_Tuning pkt = {
         LOG_PACKET_HEADER_INIT(LOG_NTUN_MSG),
         time_us             : AP_HAL::micros64(),
-        wp_distance         : control_mode->get_distance_to_destination(),
+        wp_distance         : g_actual_vx,//control_mode->get_distance_to_destination(),
         wp_bearing_cd       : (uint16_t)wrap_360_cd(nav_controller->target_bearing_cd()),
         nav_bearing_cd      : (uint16_t)wrap_360_cd(nav_controller->nav_bearing_cd()),
         yaw                 : (uint16_t)ahrs.yaw_sensor,
-        xtrack_error        : nav_controller->crosstrack_error()
+        xtrack_error        : g_actual_vy//nav_controller->crosstrack_error()
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
@@ -175,13 +175,17 @@ void Rover::Log_Write_Steering()
 {
     float lat_accel = DataFlash.quiet_nanf();
     g2.attitude_control.get_lat_accel(lat_accel);
+    const float variables7=g_desired_pos_y_log;//g_desired_pos_y_log notes a desired y pos of NED,is a global variable
+    const float variables8=g_actual_pos_y_log;//g_actual_pos_y_log notes a actual y pos of NED,is a global variable
     struct log_Steering pkt = {
         LOG_PACKET_HEADER_INIT(LOG_STEERING_MSG),
         time_us        : AP_HAL::micros64(),
         steering_in        : channel_steer->get_control_in(),
-        steering_out       : g2.motors.get_steering(),
-        desired_lat_accel  : g2.attitude_control.get_desired_lat_accel(),
-        lat_accel          : lat_accel,
+        steering_out       : g_actual_vx_mp,//g2.motors.get_steering(),
+        desired_lat_accel  : variables7,//g2.attitude_control.get_desired_lat_accel(),
+        lat_accel          : variables8,//lat_accel,
+        //desired_lat_accel  : g2.attitude_control.get_desired_lat_accel(),//edit by shiguang.wu
+        //lat_accel          : lat_accel,//edit by shiguang.wu
         desired_turn_rate  : degrees(g2.attitude_control.get_desired_turn_rate()),
         turn_rate          : degrees(ahrs.get_yaw_rate_earth())
     };
@@ -201,17 +205,28 @@ struct PACKED log_Throttle {
 // Write a throttle control packet
 void Rover::Log_Write_Throttle()
 {
-    const Vector3f accel = ins.get_accel();
+    //const Vector3f accel = ins.get_accel();
     float speed = DataFlash.quiet_nanf();
     g2.attitude_control.get_forward_speed(speed);
+    //////the log is record the desired y velocity of NED add by shiguang.wu on 2018.10.20 ***start**
+    const float variables3=desired_y_dt;//desired_y_dt notes a desired y velocity of NED,is a global variable
+    const float variables4=g_actual_vy_mp;//g_actual_velocity_y notes a actual y velocity of NED,is a global variable
+    const float variables5=g_desired_pos_x_log;//g_desired_pos_x_log notes a desired y pos of NED,is a global variable
+    const float variables6=g_actual_pos_x_log;//g_actual_pos_x_log notes a actual y pos of NED,is a global variable
+
+    /////////////////**end**
     struct log_Throttle pkt = {
         LOG_PACKET_HEADER_INIT(LOG_THR_MSG),
         time_us         : AP_HAL::micros64(),
         throttle_in     : channel_throttle->get_control_in(),
-        throttle_out    : g2.motors.get_throttle(),
-        desired_speed   : g2.attitude_control.get_desired_speed(),
-        speed           : speed,
-        accel_y         : accel.y
+        throttle_out    :variables5,
+        //throttle_out    : g2.motors.get_throttle(),//edit by shiguang.wu
+        desired_speed   : variables3,//add by shiguang.wu
+        speed           : variables4,//add by shiguang.wu
+        accel_y         : variables6
+        //desired_speed   : g2.attitude_control.get_desired_speed(), //edit by shiguang.wu
+        //speed           : speed,//edit by shiguang.wu
+        //accel_y         : accel.y//edit by shiguang.wu
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }

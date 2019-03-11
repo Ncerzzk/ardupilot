@@ -34,6 +34,11 @@ Rover::Rover(void) :
     control_mode(&mode_initializing),
     home(ahrs.get_home()),
     G_Dt(0.02f),
+    v_dt(0.0f),
+    last_ms(0),
+    count(0),
+    count_v(0),
+    count_len(0),
     mode_auto(mode_rtl)
 {
 }

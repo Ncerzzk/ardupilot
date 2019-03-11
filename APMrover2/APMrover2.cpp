@@ -32,7 +32,7 @@
 #include "Rover.h"
 
 const AP_HAL::HAL& hal = AP_HAL::get_HAL();
-
+//定义了一个Rover的类，
 Rover rover;
 
 #define SCHED_TASK(func, _interval_ticks, _max_time_micros) SCHED_TASK_CLASS(Rover, &rover, func, _interval_ticks, _max_time_micros)
@@ -43,10 +43,11 @@ Rover rover;
   they are expected to take (in microseconds)
  */
 const AP_Scheduler::Task Rover::scheduler_tasks[] = {
-    //         Function name,          Hz,     us,
+    //         Function name,          Hz,     us(运行最大时间微秒),
     SCHED_TASK(read_radio,             50,    200),
     SCHED_TASK(ahrs_update,            50,   1500),
     SCHED_TASK(read_rangefinders,      50,    200),
+    SCHED_TASK(update_desired_velocity,      50,    200),
     SCHED_TASK(update_current_mode,    50,    200),
     SCHED_TASK(set_servos,             50,    200),
     SCHED_TASK(update_GPS,             50,    300),
@@ -95,6 +96,9 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
 #if ADVANCED_FAILSAFE == ENABLED
     SCHED_TASK(afs_fs_check,           10,    200),
 #endif
+    SCHED_TASK(read_input_control,         10,    200),
+    SCHED_TASK(update_motor_control_stm32,  50,    200),
+
 };
 
 constexpr int8_t Rover::_failsafe_priorities[7];
@@ -102,9 +106,15 @@ constexpr int8_t Rover::_failsafe_priorities[7];
 #if STATS_ENABLED == ENABLED
 /*
   update AP_Stats
+
 */
+//定义类中的方法具体内容。
+//获取状态更新
 void Rover::stats_update(void)
 {
+    //g2是Rover类实例的类实例的对象。
+    //stats是g2的继承的类。
+    // AP_Stats::set_flying（）
     g2.stats.set_flying(g2.motors.active());
     g2.stats.update();
 }
@@ -113,6 +123,7 @@ void Rover::stats_update(void)
 /*
   setup is called when the sketch starts
  */
+//启动程序
 void Rover::setup()
 {
     // load the default values of variables listed in var_info[]
@@ -141,6 +152,7 @@ void Rover::update_soft_armed()
 }
 
 // update AHRS system
+//更新姿态信息
 void Rover::ahrs_update()
 {
     update_soft_armed();
@@ -244,6 +256,7 @@ void Rover::update_logging2(void)
 
 /*
   update aux servo mappings
+      更新伺服码盘信息
  */
 void Rover::update_aux(void)
 {
@@ -304,5 +317,38 @@ void Rover::update_current_mode(void)
 {
     control_mode->update();
 }
+//update motor  control of stm32.writen by YM kang
+void Rover::update_motor_control_stm32(void)
+{
 
+	int x=-30;
+	int y=0;
+	int z=0;
+	uint8_t direction=0x00;
+	if(is_negative((float)x)){direction=direction | 0x04;}
+	if(is_negative((float)y)){direction=direction | 0x02;}
+	if(is_negative((float)z)){direction=direction | 0x01;}
+
+	uint16_t x_d=(uint16_t)(abs(x) & 0xFFFF);
+	uint8_t x_high_8=x_d>>8;
+	uint8_t x_low_8=x_d & 0x00FF;
+
+	uint16_t y_d=(uint16_t)(abs(y) & 0xFFFF);
+	uint8_t y_high_8=y_d>>8;
+	uint8_t y_low_8=y_d & 0x00FF;
+
+	uint16_t z_d=(uint16_t)(abs(z) & 0xFFFF);
+	uint8_t z_high_8=z_d>>8;
+	uint8_t z_low_8=z_d & 0x00FF;
+
+    if(arming.is_armed()){
+	const uint8_t readCmd[10]={0xFF,0xFE,0x01,0xFF,0x0F,0x0F,0x0F,0x00,0x00,0x00};
+	const uint8_t *p=readCmd;
+	//hal.uartF->write(p,10);
+    }else{
+    	const uint8_t readCmd[10]={0xFF,0xFE,0x01,x_high_8,x_low_8,y_high_8,y_low_8,z_high_8,z_low_8,direction};
+    	const uint8_t *p=readCmd;
+    	//hal.uartF->write(p,10);
+	}
+}
 AP_HAL_MAIN_CALLBACKS(&rover);

@@ -91,12 +91,12 @@ const AP_Param::Info Rover::var_info[] = {
     // @User: standard
     GSCALAR(auto_kickstart,          "AUTO_KICKSTART", 0.0f),
 
-    // @Param: CRUISE_SPEED
+    // @Param: CRUISE_SPEED巡航速度
     // @DisplayName: Target cruise speed in auto modes
     // @Description: The target speed in auto missions.
     // @Units: m/s
     // @Range: 0 100
-    // @Increment: 0.1
+    // @Increment: 0.1增量
     // @User: Standard
     GSCALAR(speed_cruise,        "CRUISE_SPEED",    CRUISE_SPEED),
 
@@ -568,7 +568,17 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Group: FOLL
     // @Path: ../libraries/AP_Follow/AP_Follow.cpp
     AP_SUBGROUPINFO(follow, "FOLL", 23, ParametersG2, AP_Follow),
+    AP_GROUPINFO("PARA1", 24, ParametersG2, para1, 0),
+    AP_GROUPINFO("PARA2", 25, ParametersG2, para2, 0),
+    AP_GROUPINFO("PARA3", 26, ParametersG2, para3, 0),
+    AP_GROUPINFO("PARA5", 27, ParametersG2, para5, 0),
+    AP_GROUPINFO("UWBXYZ", 28, ParametersG2, uwbxyz, 0.0f),
+    AP_GROUPINFO("PARA_E_UWBTOGLO", 29, ParametersG2, angle_error_uwbtoglo, 0.0f),
+    AP_GROUPINFO("PARA_V_CONTROL", 30, ParametersG2, v_control, 1.0f),
 
+    //AP_GROUPINFO("DESIRED_T", 27, ParametersG2, desired_T, 1),
+    //AP_GROUPINFO("DESIRED_V_MAX", 28, ParametersG2, desired_v_max, 0.5),
+    //AP_GROUPINFO("PARA4", 29, ParametersG2, para4, 0),
     AP_GROUPEND
 };
 

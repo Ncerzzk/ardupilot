@@ -25,6 +25,17 @@ public:
         MOTOR_TEST_THROTTLE_RIGHT = 4,
     };
 
+    //////////////////////////////////////////////////////////////////////////
+    /////////new functions for stm32 control  defined by Shiguang.wu//////////
+    //////////////////////////////////////////////////////////////////////////
+    void output_stm32(bool armed);
+    void set_velocity_x(float velocity_x);
+    void set_velocity_y(float velocity_y);
+    void set_angular_z(float angular_z);
+    float get_velocity_x()const {return _velocity_x;}
+    float get_velocity_y()const {return _velocity_y;}
+    /////////////////////////////////////////////////////////////////////////
+
     // initialise motors
     void init();
 
@@ -57,6 +68,9 @@ public:
 
     // true if vehicle is capable of skid steering
     bool have_skid_steering() const;
+
+    //true if vehicle is capable of omni four drive
+    bool have_omni_four() const;
 
     //true if vehicle is capable of lateral movement
     bool has_lateral_control() const;
@@ -92,6 +106,8 @@ public:
 
 protected:
 
+
+    class AP_AHRS &ahrs;//new class for inverse global velocity(yaw_senseor) add by Shiguang.wu
     // sanity check parameters
     void sanity_check_parameters();
 
@@ -106,6 +122,9 @@ protected:
 
     // output to skid steering channels
     void output_skid_steering(bool armed, float steering, float throttle);
+    //new function for four wheel frames
+
+    void output_omni_four(bool armed, float steering, float throttle,float lateral);
 
     // output throttle (-100 ~ +100) to a throttle channel.  Sets relays if required
     void output_throttle(SRV_Channel::Aux_servo_function_t function, float throttle);
@@ -139,4 +158,10 @@ protected:
     float   _throttle_prev; // throttle input from previous iteration
     bool    _scale_steering = true; // true if we should scale steering by speed or angle
     float   _lateral;  // requested lateral input as a value from -4500 to +4500
+
+    //internal variables for stm32 control  defined by Shiguang.wu/////////////////
+    float _velocity_x; //the x-axle velocity of vehicle range as a range form -1 to 1;
+    float _velocity_y;//the y-axle velocity of vehicle range as a range form -1 to 1;
+    float _angular_z;//the z-axle angular velocity of vehicle range as a range form -4500 to 4500;
+
 };

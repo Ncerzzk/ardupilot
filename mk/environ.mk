@@ -125,7 +125,7 @@ ifneq ($(APPDIR),)
 # this is a recusive PX4 build
 HAL_BOARD = HAL_BOARD_PX4
 endif
-
+#make目标版本与对应版本匹配
 # handle target based overrides for board type
 ifneq ($(findstring px4, $(MAKECMDGOALS)),)
 HAL_BOARD = HAL_BOARD_PX4

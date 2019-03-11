@@ -20,12 +20,14 @@ bool ModeAuto::_enter()
 
     // init location target
     set_desired_location(rover.current_loc);
-
+    //r_wp_nav->wp_and_spline_init();
     // other initialisation
     auto_triggered = false;
+    _yaw_angle_start=(ahrs.yaw_sensor);
 
     // restart mission processing
     mission.start_or_resume();
+    gcs().send_text(MAV_SEVERITY_NOTICE, "enter modeAuto!");
     return true;
 }
 
@@ -39,7 +41,86 @@ void ModeAuto::_exit()
 
 void ModeAuto::update()
 {
+
     switch (_submode) {
+
+       case Auto_WP:
+        {
+           //gcs().send_text(MAV_SEVERITY_NOTICE, "enter auto_mp!");
+            _distance_to_destination = get_distance(rover.current_loc, _destination);
+            const bool near_wp = _distance_to_destination <= rover.g.waypoint_radius;
+            // check if we've reached the destination
+            if (!_reached_destination && (near_wp || location_passed_point(rover.current_loc, _origin, _destination))) {
+                // trigger reached
+                _reached_destination = true;
+                gcs().send_text(MAV_SEVERITY_NOTICE, "arrived destination!");
+            }
+            // determine if we should keep navigating
+            if (!_reached_destination || (rover.is_boat() && !near_wp)) {
+             Vector2f vector_diff=location_diff(rover.current_loc, _destination);
+             distance_wp_x=vector_diff.y;
+             distance_wp_y=vector_diff.x;
+
+             int x_sign,y_sign;
+             if(vector_diff.x > 0)
+             {	  x_sign =1;}
+            	 else{
+            		 x_sign=-1;
+             }
+             if(vector_diff.y > 0)
+             {	  y_sign =1;}
+            	 else{
+            		 y_sign=-1;
+             }
+             float throttle_max=50;
+             float lateral_max=50;
+             if(_distance_to_destination<0.5)
+             { 	throttle_max=30;
+             	 lateral_max=30;}
+             float throttle_out_y=50*(abs(vector_diff.x)/_distance_to_destination) *x_sign;
+             float lateral_out_x=50*(abs(vector_diff.y)/_distance_to_destination)* y_sign;
+             float throttle_out =200*attitude_control.get_throttle_out(vector_diff,rover.G_Dt);
+             float lateral_out =200*attitude_control.get_lateral_out(vector_diff,rover.G_Dt);
+
+             if (throttle_out>throttle_max)
+            	 {throttle_out=throttle_max;}
+             else if(throttle_out<-throttle_max)
+        	 	 {throttle_out=-throttle_max;}
+             else
+             { }
+             if (lateral_out>lateral_max)
+            	 {lateral_out=lateral_max;}
+             else if(lateral_out<-lateral_max)
+        	 	 {lateral_out=-lateral_max;}
+             else
+             { }
+             float vx=cosf((36000-ahrs.yaw_sensor)*3.1415926/18000)*lateral_out+sinf((36000-ahrs.yaw_sensor)*3.1415926/18000)*throttle_out;
+             float vy=-sinf((36000-ahrs.yaw_sensor)*3.1415926/18000)*lateral_out+cosf((36000-ahrs.yaw_sensor)*3.1415926/18000)*throttle_out;
+             float error_angle=(_yaw_angle_start- ahrs.yaw_sensor);
+             throttle_temp=vx;
+             lateral_temp=-vy;
+             g2.motors.set_lateral(vx);
+             g2.motors.set_throttle(-vy);
+             if(error_angle>18000)
+             {  g2.motors.set_steering(36000-error_angle);}
+             else if(error_angle<-18000)
+             {   g2.motors.set_steering(-36000-error_angle);}
+             else
+             {  g2.motors.set_steering(-error_angle);}
+
+
+             //gogo2:
+             //+ is anticlockwise,
+             //g2.motors.set_steering(1000);
+            } else {
+                // we have reached the destination so stop
+                stop_vehicle();
+            }
+            break;
+        }
+
+        //L1 control
+/*
         case Auto_WP:
         {
             _distance_to_destination = get_distance(rover.current_loc, _destination);
@@ -59,7 +140,7 @@ void ModeAuto::update()
                 stop_vehicle();
             }
             break;
-        }
+        }*/
 
         case Auto_HeadingAndSpeed:
         {
@@ -88,6 +169,18 @@ float ModeAuto::get_distance_to_destination() const
         return _mode_rtl.get_distance_to_destination();
     }
     return _distance_to_destination;
+}
+///////////////////////*****************************************//////////////////////////////
+///////////////////////*****************************************//////////////////////////////
+///////////////////////*****************************************//////////////////////////////
+//////////new set desired location for rover
+void ModeAuto::r_set_desired_location(const Location_Class& dest_class,const struct Location& destination, float next_leg_bearing_cd)
+{
+    // call parent
+    Mode::set_desired_location(destination, next_leg_bearing_cd);
+    r_wp_nav->set_wp_destination(dest_class);
+
+    _submode = Auto_WP;
 }
 
 // set desired location to drive to

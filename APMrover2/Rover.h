@@ -25,6 +25,10 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AC_PID/AC_P.h>
 #include <AC_PID/AC_PID.h>
+#include <AC_WPNav/AC_WPNav.h>
+#include <AC_WPNav/AC_Loiter.h>
+#include <AC_AttitudeControl/AC_AttitudeControl.h>
+#include <AC_AttitudeControl/AC_PosControl.h>
 #include <AP_AccelCal/AP_AccelCal.h>                // interface and maths for accelerometer calibration
 #include <AP_AHRS/AP_AHRS.h>                        // ArduPilot Mega DCM Library
 #include <AP_Airspeed/AP_Airspeed.h>                // needed for AHRS build
@@ -118,6 +122,7 @@ public:
     friend class ModeRTL;
     friend class ModeSmartRTL;
     friend class ModeFollow;
+    friend class AP_MotorsUGV;//new class for AP_MotorsUGV add by Shiguang.wu.
 
     Rover(void);
 
@@ -185,6 +190,16 @@ private:
 
     // selected navigation controller
     AP_Navigation *nav_controller;
+
+    ////////////////////////////////
+    //new class object.
+    AC_WPNav *r_wp_nav;
+    AC_Loiter *loiter_nav;
+    AC_PosControl *pos_control;
+    //AP_InertialNav &inertial_nav;
+    AC_AttitudeControl *r_attitude_control;
+    //
+
 
     // Mission library
     AP_Mission mission{ahrs,
@@ -320,7 +335,15 @@ private:
     // The main loop execution time.  Seconds
     // This is the time between calls to the DCM algorithm and is the Integration time for the gyros.
     float G_Dt;
+    ///////////////new variables for update desired velocity write by shiguang.wu 2018.10.17/////
+    float v_dt;//=0;
+    uint32_t last_ms;//=0;
+    int count;
+    int count_v;
+    int count_len;
 
+
+    /////
     // flyforward timer
     uint32_t flyforward_start_ms;
 
@@ -387,6 +410,7 @@ private:
     void one_second_loop(void);
     void update_GPS(void);
     void update_current_mode(void);
+    void update_motor_control_stm32(void);
 
     // capabilities.cpp
     void init_capabilities(void);
@@ -428,6 +452,9 @@ private:
 
     // control_modes.cpp
     Mode *mode_from_mode_num(enum Mode::Number num);
+    /////////new functions for rc_channel input control write by wu 2018.10.16//////
+    void read_input_control();
+    void update_desired_velocity();
     void read_control_switch();
     uint8_t readSwitch(void);
     void reset_control_switch();
@@ -435,6 +462,7 @@ private:
     void init_aux_switch();
     void do_aux_function_change_mode(Mode &mode,
                                      const aux_switch_pos ch_flag);
+
     void read_aux_switch();
 
     // crash_check.cpp
@@ -573,6 +601,8 @@ public:
 
 extern const AP_HAL::HAL& hal;
 extern Rover rover;
+
+
 
 using AP_HAL::millis;
 using AP_HAL::micros;

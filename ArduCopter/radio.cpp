@@ -21,6 +21,7 @@ void Copter::default_dead_zones()
 
 void Copter::init_rc_in()
 {
+    //rc_map  ½áºÏAC_RCMapper.h
     channel_roll     = RC_Channels::rc_channel(rcmap.roll()-1);
     channel_pitch    = RC_Channels::rc_channel(rcmap.pitch()-1);
     channel_throttle = RC_Channels::rc_channel(rcmap.throttle()-1);

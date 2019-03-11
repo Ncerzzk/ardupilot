@@ -22,6 +22,8 @@
 #include <AP_Airspeed/AP_Airspeed.h>
 #include <AP_Gripper/AP_Gripper.h>
 #include <AP_BLHeli/AP_BLHeli.h>
+#include "../../APMrover2/Rover.h"
+#include "../../APMrover2/my_header.h"
 
 #include "GCS.h"
 
@@ -1208,8 +1210,8 @@ void GCS_MAVLINK::send_sensor_offsets()
     const AP_Baro &barometer = AP::baro();
 
     mavlink_msg_sensor_offsets_send(chan,
-                                    mag_offsets.x,
-                                    mag_offsets.y,
+                                    distance_wp_x,//mag_offsets.x,
+                                    distance_wp_y,//mag_offsets.y,
                                     mag_offsets.z,
                                     compass.get_declination(),
                                     barometer.get_pressure(),
@@ -1467,8 +1469,8 @@ void GCS_MAVLINK::send_opticalflow(const OpticalFlow &optflow)
         chan,
         AP_HAL::millis(),
         0, // sensor id is zero
-        flowRate.x,
-        flowRate.y,
+        desired_vx,//flowRate.x,
+        desired_vy,//flowRate.y,
         bodyRate.x,
         bodyRate.y,
         optflow.quality(),
@@ -1566,15 +1568,17 @@ void GCS_MAVLINK::send_vibration() const
 {
     const AP_InertialSensor &ins = AP::ins();
 
-    Vector3f vibration = ins.get_vibration_levels();
+    // Vector3f vibration = ins.get_vibration_levels(); //by wu
 
     mavlink_msg_vibration_send(
         chan,
         AP_HAL::micros64(),
-        vibration.x,
-        vibration.y,
-        vibration.z,
-        ins.get_accel_clip_count(0),
+
+        lateral_temp,//g_pi_desired_x,//desired_x_dt,//lateral_temp,//vibration.x,
+        throttle_temp,//g_pi_desired_y,//desired_y_dt,//throttle_temp,//vibration.y,
+        guide_goal_pos_x,//vibration.z,
+
+        distance_wp_y,//ins.get_accel_clip_count(0),
         ins.get_accel_clip_count(1),
         ins.get_accel_clip_count(2));
 }
@@ -1686,7 +1690,9 @@ void GCS_MAVLINK::send_servo_output_raw()
         if (values[i] == 65535) {
             values[i] = 0;
         }
-    }    
+    }
+    //values[0]=desired_vx;
+   // values[1]=desired_vy;
     mavlink_msg_servo_output_raw_send(
             chan,
             AP_HAL::micros(),
@@ -2887,8 +2893,8 @@ void GCS_MAVLINK::send_attitude() const
     mavlink_msg_attitude_send(
         chan,
         AP_HAL::millis(),
-        ahrs.roll,
-        ahrs.pitch,
+        desired_vx,//ahrs.roll,
+        desired_vy,//ahrs.pitch,
         ahrs.yaw,
         omega.x,
         omega.y,
@@ -2909,7 +2915,7 @@ void GCS_MAVLINK::send_global_position_int()
     AP_AHRS &ahrs = AP::ahrs();
 
     ahrs.get_position(global_position_current_loc); // return value ignored; we send stale data
-
+    //float vx=AP_MotorsUGV.;
     Vector3f vel;
     ahrs.get_velocity_NED(vel);
 
@@ -2920,9 +2926,9 @@ void GCS_MAVLINK::send_global_position_int()
         global_position_current_loc.lng, // in 1E7 degrees
         global_position_int_alt(),       // millimeters above ground/sea level
         global_position_int_relative_alt(), // millimeters above home
-        vel.x * 100,                     // X speed cm/s (+ve North)
-        vel.y * 100,                     // Y speed cm/s (+ve East)
-        vel.z * 100,                     // Z speed cm/s (+ve Down)
+        g_actual_vy_mp* 100,// distance_wp_x,//vel.x * 100,                     // X speed cm/s (+ve North)  acro_vy:record a leader desired vx,
+        g_actual_vx_mp * 100,//distance_wp_y,//vel.y * 100,                     // Y speed cm/s (+ve East)
+        guide_goal_pos_y*100,//display1//vel.z * 100,//distance,//vel.z * 100,                     // Z speed cm/s (+ve Down)
         ahrs.yaw_sensor);                // compass heading in 1/100 degree
 }
 

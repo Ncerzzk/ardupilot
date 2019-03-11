@@ -202,7 +202,7 @@ void Copter::setup()
 
     // setup storage layout for copter
     StorageManager::set_layout_copter();
-
+    //初始化一些上层服务例如UART,电源检测，服务，模式一系列的初始化操作。
     init_ardupilot();
 
     // initialise the main loop scheduler
@@ -230,6 +230,7 @@ void Copter::fast_loop()
 
     // run EKF state estimator (expensive)
     // --------------------
+    //姿态解算算法，读取解算好的角度信息
     read_AHRS();
 
 #if FRAME_CONFIG == HELI_FRAME

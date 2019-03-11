@@ -74,6 +74,11 @@ public:
     virtual AC_PID& get_rate_pitch_pid() = 0;
     virtual AC_PID& get_rate_yaw_pid() = 0;
 
+    //新添加的函数
+    float yaw_control();
+
+    //
+
     // get the roll acceleration limit in centidegrees/s/s or radians/s/s
     float get_accel_roll_max() const { return _accel_roll_max; }
     float get_accel_roll_max_radss() const { return radians(_accel_roll_max*0.01f); }
@@ -401,6 +406,8 @@ protected:
 
     // mix between throttle and hover throttle for 0 to 1 and ratio above hover throttle for >1
     float               _throttle_rpy_mix;
+
+
 
     // References to external libraries
     const AP_AHRS_View&  _ahrs;

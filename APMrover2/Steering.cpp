@@ -63,6 +63,8 @@ void Rover::set_servos(void)
             speed = 0.0f;
         }
 
-        g2.motors.output(arming.is_armed(), speed, G_Dt);
+        //g2.motors.output(arming.is_armed(), speed, G_Dt);
+        //add for stm32 control write by ShiguangWu
+        g2.motors.output_stm32(arming.is_armed());
     }
 }

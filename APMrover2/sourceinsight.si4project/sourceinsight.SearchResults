@@ -1,0 +1,13 @@
+---- ahrs.get_position Matches (12 in 11 files) ----
+Rover::ahrs_update in APMrover2.cpp :     have_position = ahrs.get_position(current_loc);
+Plane::update_GPS_50Hz in ArduPlane.cpp (C:\Users\ncer\Documents\ardupilot\ArduPlane) :     have_position = ahrs.get_position(current_loc);
+Rover::set_home_to_current_location in commands.cpp :     if (ahrs.have_inertial_nav() && ahrs.get_position(temp_loc)) {
+Rover::update_home in commands.cpp :         if (ahrs.get_position(loc)) {
+Plane::update_home in commands.cpp (C:\Users\ncer\Documents\ardupilot\ArduPlane) :         if(ahrs.get_position(loc)) {
+Plane::geofence_check in geofence.cpp (C:\Users\ncer\Documents\ardupilot\ArduPlane) :     } else if (!altitude_check_only && ahrs.get_position(loc)) {
+Rover::Log_Write_Depth in Log.cpp :     if (!rover.ahrs.get_position(loc)) {
+QuadPlane::vtol_position_controller in quadplane.cpp (C:\Users\ncer\Documents\ardupilot\ArduPlane) :             plane.ahrs.get_position(plane.current_loc);
+Rover::compass_accumulate in sensors.cpp :         if (ahrs.get_position(loc)) {
+Copter::compass_accumulate in sensors.cpp (C:\Users\ncer\Documents\ardupilot\ArduCopter) :         if (ahrs.get_position(loc)) {
+Sub::compass_accumulate in sensors.cpp (C:\Users\ncer\Documents\ardupilot\ArduSub) :         if (ahrs.get_position(loc)) {
+Tracker::update_tracker_position in tracking.cpp (C:\Users\ncer\Documents\ardupilot\AntennaTracker) :     if (!ahrs.get_position(current_loc) && (gps.status() >= AP_GPS::GPS_OK_FIX_2D)) {

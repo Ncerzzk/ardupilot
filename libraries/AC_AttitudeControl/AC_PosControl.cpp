@@ -1030,6 +1030,11 @@ void AC_PosControl::run_xy_controller(float dt, float ekfNavVelGainScaler)
     _vel_target.x += _vel_desired.x;
     _vel_target.y += _vel_desired.y;
 
+
+    _vx=_ahrs.cos_yaw() * _vel_target.x+ _ahrs.sin_yaw()*_vel_target.y ;
+    _vy=-_ahrs.sin_yaw() * _vel_target.x+ _ahrs.cos_yaw()*_vel_target.y ;
+
+
     // the following section converts desired velocities in lat/lon directions to accelerations in lat/lon frame
 
     Vector2f accel_target, vel_xy_p, vel_xy_i, vel_xy_d;
@@ -1095,6 +1100,8 @@ void AC_PosControl::run_xy_controller(float dt, float ekfNavVelGainScaler)
     _limit.accel_xy = limit_vector_length(_accel_target.x, _accel_target.y, accel_max);
 
     // update angle targets that will be passed to stabilize controller
+
+    //for rover we needn't the acceleration convert to lean angles
     accel_to_lean_angles(_accel_target.x, _accel_target.y, _roll_target, _pitch_target);
 }
 

@@ -242,10 +242,24 @@ void Rover::do_nav_wp(const AP_Mission::Mission_Command& cmd, bool always_stop_a
         next_leg_bearing_cd = mission.get_next_ground_course_cd(MODE_NEXT_HEADING_UNKNOWN);
     }
 
+    ////////////////////
+    //old functions
+
     // retrieve and sanitize target location
     Location cmdloc = cmd.content.location;
     location_sanitize(current_loc, cmdloc);
     mode_auto.set_desired_location(cmdloc, next_leg_bearing_cd);
+    ////////////////////////////////
+
+    //////////////////////////////////
+    //new functions
+    //
+    //Location_Class target_loc(cmd.content.location);
+   // mode_auto.r_set_desired_location(target_loc,cmdloc, next_leg_bearing_cd);
+
+
+
+
 }
 
 // do_set_yaw_speed - turn to a specified heading and achieve and given speed

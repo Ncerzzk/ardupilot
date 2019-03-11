@@ -57,6 +57,10 @@ public:
     void set_dt(float delta_sec);
     float get_dt() const { return _dt; }
 
+
+    float vel_x()const {return _vx;}
+    float vel_y()const {return _vy;}
+
     ///
     /// z position controller
     ///
@@ -408,6 +412,8 @@ protected:
     Vector3f    _accel_target;          // acceleration target in cm/s/s
     Vector3f    _accel_error;           // acceleration error in cm/s/s
     Vector2f    _vehicle_horiz_vel;     // velocity to use if _flags.vehicle_horiz_vel_override is set
+    float       _vx;
+    float       _vy;
     float       _distance_to_target;    // distance to position target - for reporting only
     LowPassFilterFloat _vel_error_filter;   // low-pass-filter on z-axis velocity error
 

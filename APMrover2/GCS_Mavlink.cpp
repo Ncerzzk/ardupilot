@@ -755,6 +755,7 @@ MAV_RESULT GCS_MAVLINK_Rover::handle_command_long_packet(const mavlink_command_l
 
 void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
 {
+    //gcs().send_text(MAV_SEVERITY_WARNING, "velocity sucessful!");
     switch (msg->msgid) {
 
     case MAVLINK_MSG_ID_RC_CHANNELS_OVERRIDE:
@@ -916,6 +917,9 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
                 target_speed = constrain_float(safe_sqrt(sq(packet.vx) + sq(packet.vy)), -speed_max, speed_max);
                 // convert vector direction to target yaw
                 target_yaw_cd = degrees(atan2f(packet.vy, packet.vx)) * 100.0f;
+                g_pi_desired_x=packet.vy;
+                g_pi_desired_x=packet.vx;
+                gcs().send_text(MAV_SEVERITY_WARNING, "velocity sucessful!");
 
                 // rotate target yaw if provided in body-frame
                 if (packet.coordinate_frame == MAV_FRAME_BODY_NED || packet.coordinate_frame == MAV_FRAME_BODY_OFFSET_NED) {
@@ -973,6 +977,8 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
 
     case MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT:    // MAV ID: 86
         {
+            //gcs().send_text(MAV_SEVERITY_WARNING, "Access ID successful!");
+
             // decode packet
             mavlink_set_position_target_global_int_t packet;
             mavlink_msg_set_position_target_global_int_decode(msg, &packet);
@@ -1010,6 +1016,8 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
 
             float target_speed = 0.0f;
             float target_yaw_cd = 0.0f;
+            float target_velocity_x=0.0f;//get the desired velocity given by Raspberry Pi.
+            float target_velocity_y=0.0f;//get the desired velocity given by Raspberry Pi.
 
             // consume velocity and convert to target speed and heading
             if (!vel_ignore) {
@@ -1018,7 +1026,9 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
                 target_speed = constrain_float(safe_sqrt(sq(packet.vx) + sq(packet.vy)), -speed_max, speed_max);
                 // convert vector direction to target yaw
                 target_yaw_cd = degrees(atan2f(packet.vy, packet.vx)) * 100.0f;
-
+                target_velocity_x=packet.vy;
+                target_velocity_y=packet.vx;
+                //gcs().send_text(MAV_SEVERITY_WARNING, "Get velocity successful!");
                 // rotate target yaw if provided in body-frame
                 if (packet.coordinate_frame == MAV_FRAME_BODY_NED || packet.coordinate_frame == MAV_FRAME_BODY_OFFSET_NED) {
                     target_yaw_cd = wrap_180_cd(target_yaw_cd + rover.ahrs.yaw_sensor);
@@ -1053,10 +1063,16 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
             // set guided mode targets
             if (!pos_ignore) {
                 // consume position target
+                gcs().send_text(MAV_SEVERITY_WARNING, "Set Position successful!");
                 rover.mode_guided.set_desired_location(target_loc);
             } else if (pos_ignore && !vel_ignore && acc_ignore && yaw_ignore && yaw_rate_ignore) {
                 // consume velocity
-                rover.mode_guided.set_desired_heading_and_speed(target_yaw_cd, speed_dir * target_speed);
+                //gcs().send_text(MAV_SEVERITY_WARNING, "Set velocity successful!");
+                //rover.mode_guided.set_desired_heading_and_speed(target_yaw_cd, speed_dir * target_speed);
+                rover.mode_guided.set_desired_heading_and_speed(target_velocity_x, target_velocity_y);
+
+                //rover.mode_guided.attitude_control.set_desired_vel(target_velocity_x,target_velocity_y);//add by shiguang.wu 2018.11.1
+
             } else if (pos_ignore && !vel_ignore && acc_ignore && yaw_ignore && !yaw_rate_ignore) {
                 // consume velocity and turn rate
                 rover.mode_guided.set_desired_turn_rate_and_speed(target_turn_rate_cds, speed_dir * target_speed);

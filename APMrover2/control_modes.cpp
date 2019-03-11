@@ -44,7 +44,43 @@ Mode *Rover::mode_from_mode_num(const enum Mode::Number num)
     }
     return ret;
 }
+/////////new functions for rc_channel input control write by wu 2018.10.16//////
+void Rover::read_input_control()
+{
+	//channel 5 ---DÍ¨µÀ---1090--1920
+    const uint16_t Ch5_pulsewidth = RC_Channels::get_radio_in(5 - 1);
+    const uint16_t Ch8_pulsewidth = RC_Channels::get_radio_in(8 - 1);
+    ch8_input=Ch8_pulsewidth;
+    if(Ch5_pulsewidth>1500){ ch5_input=false;}else{ch5_input=true;}
 
+}
+///////new functions for emerge a serials of circular velocity write by shiguang.wu on 2018.10.20///////
+void Rover::update_desired_velocity()
+{
+//ch5_input is a global variables assignment by mp parameters,which used for switch velocity control
+	if(ch5_input==true)
+	{
+		const uint32_t now=AP_HAL::millis();//record the initial time  unit(ms)
+		if(count==0){
+			last_ms=now;
+			count=1;}
+		v_dt=(now-last_ms)*0.001f;//record the interval time between initial time and current time  unit(s)
+		v_dt_display=v_dt;//used for mp display.
+		//last_ms=now;
+		desired_x_dt=0.2*sinf(0.2*M_PI*v_dt);//desired_x_dt is a global variables,emerge a desired circular velocity.
+		desired_y_dt=0.2*cosf(0.2*M_PI*v_dt);//desired_y_dt is a global variables,emerge a desired circular velocity.
+	}else{
+		//reset values
+		v_dt=0;
+		last_ms=0;
+		count=0;
+		count_v=0;
+		count_len=0;
+		desired_x_dt=0;
+		desired_y_dt=0;
+	}
+}
+////////////////////////////////////////////
 void Rover::read_control_switch()
 {
     static bool switch_debouncer;

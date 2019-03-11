@@ -146,6 +146,19 @@ const AP_Param::GroupInfo AC_AttitudeControl::var_info[] = {
     AP_GROUPEND
 };
 
+
+
+
+float AC_AttitudeControl::yaw_control()
+{
+    Vector3f gyro_latest = _ahrs.get_gyro_latest();
+
+float steering_out=(rate_target_to_motor_yaw(gyro_latest.z, _rate_target_ang_vel.z));
+return steering_out;
+
+}
+
+
 // Set output throttle and disable stabilization
 void AC_AttitudeControl::set_throttle_out_unstabilized(float throttle_in, bool reset_attitude_control, float filter_cutoff)
 {
@@ -294,7 +307,7 @@ void AC_AttitudeControl::input_euler_angle_roll_pitch_euler_rate_yaw(float euler
 // Command an euler roll, pitch and yaw angle with angular velocity feedforward and smoothing
 void AC_AttitudeControl::input_euler_angle_roll_pitch_yaw(float euler_roll_angle_cd, float euler_pitch_angle_cd, float euler_yaw_angle_cd, bool slew_yaw)
 {
-    // Convert from centidegrees on public interface to radians
+    // Convert from centidegrees on public interface to radians 度到弧度的转换
     float euler_roll_angle = radians(euler_roll_angle_cd*0.01f);
     float euler_pitch_angle = radians(euler_pitch_angle_cd*0.01f);
     float euler_yaw_angle = radians(euler_yaw_angle_cd*0.01f);

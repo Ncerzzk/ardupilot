@@ -123,7 +123,7 @@ void Copter::init_ardupilot()
 #if FRAME_CONFIG == HELI_FRAME
     input_manager.set_loop_rate(scheduler.get_loop_rate_hz());
 #endif
-
+    //遥控器初始化相关的
     init_rc_in();               // sets up rc channels from radio
 
     // default frame class to match firmware if possible

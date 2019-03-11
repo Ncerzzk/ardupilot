@@ -5,21 +5,29 @@ void ModeManual::_exit()
 {
     // clear lateral when exiting manual mode
     g2.motors.set_lateral(0);
+     is_mannual=false;
 }
 
 void ModeManual::update()
 {
     float desired_steering, desired_throttle, desired_lateral;
-    get_pilot_desired_steering_and_throttle(desired_steering, desired_throttle);
-    get_pilot_desired_lateral(desired_lateral);
 
-    // if vehicle is balance bot, calculate actual throttle required for balancing
-    if (rover.is_balancebot()) {
-        rover.balancebot_pitch_control(desired_throttle, rover.arming.is_armed());
+    //stm32 control write by Shiguang wu
+    if (rover.failsafe.bits & FAILSAFE_EVENT_THROTTLE) {
+    	desired_steering = 0;
+    	desired_throttle = 0;
+    	desired_lateral=0;
+    }else{
+    	//get the input of Remote
+    	desired_throttle=rover.channel_throttle->get_control_in();
+    	desired_lateral=rover.channel_lateral->get_control_in();
+    	desired_steering=rover.channel_steer->get_control_in();
     }
+    //control the rover with Vx,Vy,Vz.
+    g2.motors.set_velocity_x(desired_lateral/100.0f);
+    g2.motors.set_velocity_y(desired_throttle/100.0f);
+    g2.motors.set_angular_z(desired_steering/450.0f);
+    is_mannual=true;
 
-    // copy RC scaled inputs to outputs
-    g2.motors.set_throttle(desired_throttle);
-    g2.motors.set_steering(desired_steering, false);
-    g2.motors.set_lateral(desired_lateral);
+
 }
